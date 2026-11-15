@@ -1,0 +1,14 @@
+id,categoria,nombre,valor_en_el_juego,unidad,valor_real,fuente_y_url,fecha_consulta,estado
+dest.luna,destino,Luna,50,creditos,[COMPLETAR],[COMPLETAR],,estimacion_juego
+dest.venus,destino,Venus,150,creditos,[COMPLETAR],[COMPLETAR],,estimacion_juego
+dest.marte,destino,Marte,180,creditos,[COMPLETAR],[COMPLETAR],,estimacion_juego
+dest.bennu,destino,Asteroide Bennu,130,creditos,[COMPLETAR],[COMPLETAR],,estimacion_juego
+dest.europa,destino,Europa,320,creditos,[COMPLETAR],[COMPLETAR],,estimacion_juego
+dest.titan,destino,Titan,380,creditos,[COMPLETAR],[COMPLETAR],,estimacion_juego
+dest.nept,destino,Neptuno,400,creditos,[COMPLETAR],[COMPLETAR],,estimacion_juego
+dest.retraso_senal,destino,Retraso de senal (todos),calculado,min,JPL Horizons,https://ssd-api.jpl.nasa.gov/doc/horizons.html,generado por tools/fetch_data.py,en_vivo_si_el_script_corrio
+cohete.tron,lanzador,Tronador II,80 cr / 8 t,cr / t,[COMPLETAR],[COMPLETAR: CONAE],,estimacion_juego
+cohete.f9,lanzador,Falcon 9,150 cr / 20 t,cr / t,[COMPLETAR],[COMPLETAR],,estimacion_juego
+cohete.sat,lanzador,Saturn V,200 cr / 34 t,cr / t,[COMPLETAR],[COMPLETAR],,estimacion_juego
+cohete.sls,lanzador,Space Launch System,240 cr / 45 t,cr / t,[COMPLETAR],[COMPLETAR],,estimacion_juego
+instrumentos.todos,carga,Costos masas y potencias de instrumentos,ver index.html,varios,[COMPLETAR],[COMPLETAR: fichas de misiones NASA / PDS],,estimacion_juego
