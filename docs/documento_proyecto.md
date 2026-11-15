@@ -27,13 +27,13 @@ Estado real: hay un prototipo jugable con 7 destinos, 6 recursos y un reporte de
 | Jugador individual y equipo de hasta 4 | Parcial | Roles por turnos en un mismo dispositivo | No hay multijugador en red |
 | Sistema de puntaje | Parcial | Fórmula con ciencia, ahorro, estrellas y precisión | Sin calibrar |
 | Escenarios, dificultad y sandbox | Hecho | 7 destinos, 3 niveles, sandbox | Europa, Titán y Neptuno casi no se ganan (ver 14) |
-| Eventos aleatorios | Parcial | Alertas específicas por destino con alternativas de respuesta | Todavía no usan clima espacial real |
+| Eventos aleatorios | Hecho | Alertas por destino con respuestas; la tormenta solar depende del clima espacial real (NASA DONKI, últimos 30 días) | Solo la tormenta solar usa datos reales |
 | Dashboard en tiempo real | Parcial | Barras durante diseño y vuelo | Sin consumo a lo largo del tiempo |
 | Visualización de la nave | Pendiente | Ninguna | Es una brecha visible frente a otros equipos |
 | Guardar, compartir y comparar diseños | Pendiente | Ninguna | Códigos de diseño compartibles |
 | Ranking | Parcial | Local en cada dispositivo | No hay ranking global |
 | Modo competitivo | Pendiente | Ninguna | Mismo objetivo, equipos distintos |
-| Uso de datos reales de NASA | Parcial | Retraso de señal vía JPL Horizons (script sin probar) | El resto son estimaciones |
+| Uso de datos reales de NASA | Parcial | Distancia y retraso de señal (JPL Horizons), clima espacial (DONKI), ventana y v∞ a Bennu (JPL Mission Design), asteroide de la semana (NeoWs); verificado el 15/11/2026 | Costos, masas y potencias siguen siendo estimaciones |
 
 ## 3. Problema, público y objetivos de aprendizaje
 
@@ -90,7 +90,7 @@ La nave avanza de manera continua. Las flechas izquierda/derecha modifican el ru
 | Masa | m = m_bus + suma de masas ≤ capacidad del cohete / (energía del destino × energía de la órbita) | Curva de carga útil contra C3 por lanzador |
 | Energía | Generación = suma de paneles × factor solar; el RTG no depende del Sol; consumo = bus + ítems | Flujo solar S = S0 / r² (r en UA, S0 ≈ 1361 W/m² a 1 UA, por verificar) con eficiencia, eclipses y batería |
 | Datos | Capacidad = tasa de las antenas × 10 / factor de distancia; la IA reduce 30 % los datos | Presupuesto de enlace (potencia, ganancia, distancia², frecuencia) |
-| Retraso de señal | Tabla o valor de JPL Horizons | t = d / c, con c = 299 792,458 km/s (1 UA ≈ 499 s) |
+| Retraso de señal | Luz-tiempo real de JPL Horizons (rango del próximo año) | t = d / c, con c = 299 792,458 km/s (1 UA ≈ 499 s) |
 | Δv y combustible | Combustible abstracto por cohete | Tsiolkovsky: Δv = Isp · g0 · ln(m0 / mf), g0 = 9,80665 m/s² |
 | Inserción | Tolerancia en velocidad y ángulo según destino, órbita y piloto | Maniobras de inserción con arco gravitatorio del cuerpo |
 | Ciencia | S = suma de valores × factor de órbita × bus × duración × astrobiólogo | Valor científico por instrumento según requisitos de la misión |
@@ -110,15 +110,24 @@ Resultado hasta hoy: **no realizado**.
 
 ## 7. Datos y APIs
 
-**Principio.** El navegador del jugador nunca llama a las APIs de NASA. Un script programado descarga los datos, los guarda como archivo estático (`data/live-data.js` y `.json`) y el juego los lee. Así se respetan los límites de uso, el juego funciona sin conexión y siempre muestra la fecha de actualización. Si el archivo falta, el juego usa valores de referencia y lo indica en pantalla.
+**Principio.** El navegador del jugador nunca llama a las APIs de NASA: las de JPL no permiten CORS y la DEMO_KEY de api.nasa.gov admite 10 llamadas por hora. En Vercel, la función `api/live-data.py` consulta las fuentes y el CDN cachea la respuesta 6 horas, así que NASA recibe pocas llamadas por día sin importar cuántas personas jueguen. Si la función no responde (o el juego se abre como archivo local), se usa la copia guardada `assets/live-data.js`, generada con `tools/fetch_data.py`. Si tampoco existe, el juego usa valores de referencia. La pantalla siempre indica de dónde salen los datos y su fecha.
+
+**Cómo se usan en el juego.**
+- **Horizons:** la distancia de cada partida es la real de hoy (antes era aleatoria) y el retraso de señal es el rango real del próximo año.
+- **DONKI:** con una fulguración X o un Kp ≥ 6 en los últimos 30 días, la tormenta solar entra seguro en la misión y resta 30 % de ciencia sin blindaje ni RTG. Con fulguraciones M o Kp ≥ 5, entra seguro y resta 20 %. Con el Sol tranquilo sigue siendo aleatoria. El reporte cita el evento real.
+- **Mission Design:** se busca la trayectoria de menor v∞ total a Bennu con salida en los próximos 2 años. El factor de energía de Bennu se ajusta así: 2,5 × (v∞ salida + v∞ llegada) / 5,5, acotado entre 0,85 y 1,25 (**estimación de juego derivada de dato real**). La API advierte que su órbita de Bennu es de 2019.
+- **NeoWs:** el asteroide más grande que pasa cerca de la Tierra en los próximos 7 días y tiene trayectoria calculable en Mission Design se convierte en un 8.º destino, con su diámetro, peligrosidad y v∞ reales.
 
 | Fuente | Dato útil | Acceso | Estado | Uso |
 |---|---|---|---|---|
-| JPL Horizons API | Distancia, luz-tiempo y velocidad de planetas, lunas y asteroides | GET `https://ssd.jpl.nasa.gov/api/horizons.api`, sin clave | Documentación verificada; script sin probar | Retraso de señal; a futuro Δv y ventanas |
-| Horizons Lookup API | Identificadores de cuerpos | GET `.../horizons_lookup.api?sstr=` | Documentación verificada | Confirmar el ID de Bennu (2101955, por verificar) |
+| JPL Horizons API | Distancia, luz-tiempo y velocidad de planetas, lunas y asteroides | GET `https://ssd.jpl.nasa.gov/api/horizons.api`, sin clave, sin CORS (la variante `ssd-api.jpl.nasa.gov/horizons.api` da 404). Responde 503 ante muchas consultas simultáneas: se limitan a 2 | **En uso, verificado 15/11/2026** | Distancia de la partida y retraso de señal |
+| Horizons Lookup API | Identificadores de cuerpos | GET `.../horizons_lookup.api?sstr=` | Documentación verificada | IDs usados (301, 299, 499, 2101955, 502, 606, 899) verificados contra Horizons |
 | SBDB, SBDB Query y Close-Approach | Órbitas y parámetros de asteroides y cometas | `https://ssd-api.jpl.nasa.gov/sbdb.api` | Documentación verificada | Escenarios con asteroides |
-| Small-Body Mission Design (JPL) | Datos para diseño rápido de misiones a cuerpos menores | `https://ssd.jpl.nasa.gov/sb` | Listado verificado | Δv a Bennu |
-| DONKI (CCMC) | Fulguraciones, eyecciones de masa coronal, tormentas | `https://ccmc.gsfc.nasa.gov/DONKI-API/get/`, sin clave, máximo 30 días | **Migró el 30/09/2026** desde api.nasa.gov según dos proyectos de terceros; ruta exacta por verificar | Eventos de tormenta solar reales |
+| Small-Body Mission Design (JPL) | Trayectorias, ventanas, tiempo de vuelo y v∞ a asteroides y cometas | GET `https://ssd-api.jpl.nasa.gov/mdesign.api`, sin clave, sin CORS; `step` solo admite 1, 2, 5, 10, 15, 20 o 30 | **En uso, verificado 15/11/2026** | Ventana y dificultad de Bennu y del asteroide de la semana |
+| NeoWs (api.nasa.gov) | Asteroides cercanos de la semana: diámetro, velocidad, distancia, peligrosidad | GET `https://api.nasa.gov/neo/rest/v1/feed`, clave `NASA_API_KEY` o DEMO_KEY (10 llamadas/h) | **En uso, verificado 15/11/2026** | 8.º destino dinámico |
+| DONKI (CCMC) | Fulguraciones, eyecciones de masa coronal, tormentas | `https://ccmc.gsfc.nasa.gov/DONKI-API/get/{FLR,CME,GST}`, sin clave, máximo 30 días. La ruta vieja `api.nasa.gov/DONKI` da 404 | **En uso, verificado 15/11/2026** | Tormenta solar ligada a eventos reales |
+| TechPort | Proyectos tecnológicos de NASA y su TRL | `https://techport.nasa.gov/api/projects` | Responde, pero el listado solo trae IDs (una consulta por proyecto) | **Descartada:** el catálogo de piezas es de balance; a lo sumo curar algunos TRL a mano |
+| TLE (ivanstanojevic.me) | Elementos orbitales de satélites terrestres | `https://tle.ivanstanojevic.me/api/tle` | Responde, con CORS | **Descartada:** describe órbitas terrestres y en el juego se orbita el destino |
 | Launch Library 2 | Lanzadores y lanzamientos | `https://thespacedevs.com/llapi`; 15 llamadas por hora sin clave | Límite verificado; campos de capacidad y costo por verificar | Catálogo de cohetes con caché |
 | DSN Now | Estado de enlaces con naves | `https://eyes.nasa.gov/dsn/data/dsn.xml` | La página avisaba mantenimiento al consultarla | Opcional |
 | APOD | Imagen astronómica del día | El endpoint antiguo de api.nasa.gov se apaga el 01/12/2026; el nuevo está en science.nasa.gov (fuente de terceros) | Por verificar | Decorativo |
@@ -127,13 +136,13 @@ Resultado hasta hoy: **no realizado**.
 | Fichas planetarias (NSSDCA), elementos keplerianos (JPL), PDS, fichas de misiones | Gravedad, radio, velocidad de escape; masas y potencias reales | Páginas y archivos | Por verificar | Tabla curada (ver abajo) |
 | Pestaña Resources del desafío | Datos oficiales del track | Sitio del desafío | **No se pudo abrir** (bloquea acceso automático) | [COMPLETAR: revisar a mano] |
 
-**Corrección.** En una versión previa de este análisis se recomendaba DONKI vía api.nasa.gov con clave de demostración. Eso quedó desactualizado por la migración a CCMC.
+**Corrección.** En una versión previa de este análisis se recomendaba DONKI vía api.nasa.gov con clave de demostración. Eso quedó desactualizado por la migración a CCMC; el 15/11/2026 se confirmó que la ruta vieja da 404 y la de CCMC funciona.
 
-**Datos curados.** No existe API para costos de misión ni para especificaciones de instrumentos. Se mantienen en `data/curated/sources.csv`, con valor del juego, valor real, fuente, fecha y un estado (`estimacion_juego` o `verificado`). Cada vez que se contraste un dato, se cambia su estado. Esa trazabilidad responde al criterio de validez.
+**Datos curados.** No existe API para costos de misión ni para especificaciones de instrumentos. Se mantienen en `assets/curated/sources.csv`, con valor del juego, valor real, fuente, fecha y un estado (`estimacion_juego` o `verificado`). Cada vez que se contraste un dato, se cambia su estado. Esa trazabilidad responde al criterio de validez.
 
 ## 8. Arquitectura técnica
 
-Aplicación de una sola página sin dependencias (`index.html`), que lee `data/live-data.js`. Funciona abriendo el archivo en el navegador. Estructura del repositorio: `index.html`, `data/` (datos en vivo y curados), `tools/fetch_data.py` (descarga), `tools/build_pdf.py` (genera este documento), `docs/`, `.github/workflows/update-data.yml` (ejecuta la descarga cada día). Para publicar: GitHub Pages desde la rama principal. Estado: el flujo de actualización automática **no fue probado**.
+Aplicación de una sola página sin dependencias (`index.html`). Funciona abriendo el archivo en el navegador. Al cargar, pide `/api/live-data` y, si no responde, usa `assets/live-data.js`. Estructura del repositorio: `index.html`, `api/` (función serverless de Vercel; la lógica de consulta está en `api/_live.py`), `assets/` (copia guardada de datos, datos curados e imágenes), `tools/fetch_data.py` (genera la copia guardada), `tools/build_pdf.py` (genera este documento) y `docs/`. Se publica en Vercel; en GitHub Pages o Netlify Drop funciona igual, pero solo con la copia guardada.
 
 ## 9. Experiencia de usuario y accesibilidad
 
@@ -183,7 +192,7 @@ Uso en aulas y clubes de ciencia, sin instalación y sin costo. Sostenibilidad: 
 1. Los valores de costo, masa y potencia son estimaciones de juego; el criterio de validez está expuesto hasta contrastarlos.
 2. La dinámica orbital y los rangos de distancia son simplificados: todavía no hay integración numérica de órbitas, ventanas reales de lanzamiento ni ecuación del cohete. Los tiempos de viaje son una escala de juego.
 3. El presupuesto se amplió a 1.800–3.200 créditos base, más bonificaciones por destino. Se debe continuar probando el equilibrio entre presupuesto, equipamiento y dificultad.
-4. El script de datos en vivo y el flujo automático no se probaron contra los servidores reales.
+4. La consulta de datos reales se probó contra los servidores el 15/11/2026; la función de Vercel falta probarla en un deploy.
 5. El multijugador es por turnos en un mismo dispositivo.
 6. Sin pruebas con usuarios ni auditoría de accesibilidad.
 7. Las APIs cambian: DONKI y APOD migraron en 2026 y DSN Now estaba en mantenimiento. El juego debe seguir funcionando si una fuente cae.
@@ -196,9 +205,10 @@ Equipo y roles: [COMPLETAR]. Licencia propuesta: MIT (archivo `LICENSE`), a conf
 ## 16. Checklist de entrega
 
 - [ ] Revisar la guía de entrega 2026 y la pestaña Resources del desafío
-- [ ] Probar `tools/fetch_data.py` y verificar el ID de Bennu
-- [ ] Verificar la ruta de DONKI en CCMC
-- [ ] Completar `data/curated/sources.csv` con valores reales y fuentes
+- [x] Probar `tools/fetch_data.py` y verificar el ID de Bennu
+- [x] Verificar la ruta de DONKI en CCMC
+- [ ] Probar `/api/live-data` en un deploy de Vercel y cargar `NASA_API_KEY`
+- [ ] Completar `assets/curated/sources.csv` con valores reales y fuentes
 - [ ] Balancear Europa, Titán y Neptuno
 - [ ] Hacer al menos una prueba con usuarios y completar la sección 10
 - [ ] Subir el repositorio a GitHub y publicar en GitHub Pages

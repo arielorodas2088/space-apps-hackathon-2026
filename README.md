@@ -2,16 +2,30 @@
 
 Juego de navegador para diseñar y simular una misión espacial a cualquier cuerpo del sistema solar. Hecho para el desafío **Space Mission Design Game** de NASA Space Apps Challenge 2026.
 
-> Estado: prototipo. Los costos, masas y potencias son **estimaciones de juego**; ver `docs/documento_proyecto.pdf` (secciones 7 y 14) y `data/curated/sources.csv`.
+> Estado: prototipo. Los costos, masas y potencias son **estimaciones de juego**; ver `docs/documento_proyecto.pdf` (secciones 7 y 14) y `assets/curated/sources.csv`.
 
 ## Probarlo en local
 Abrí `index.html` con el navegador. No hace falta instalar nada.
 
-## Datos en vivo (opcional)
-```
-python tools/fetch_data.py
-```
-Descarga distancias y retraso de señal de JPL Horizons (y clima espacial de DONKI) y escribe `data/live-data.js`, que el juego lee solo. **Escrito pero sin probar contra los servidores**: correlo y revisá la salida. Si falla, el juego usa valores de referencia y lo indica.
+## Datos reales de NASA/JPL
+El juego usa cuatro fuentes (verificadas el 15/11/2026):
+
+| Fuente | Qué cambia en el juego |
+|---|---|
+| JPL Horizons | Distancia real de hoy a cada destino y retraso de señal |
+| NASA DONKI (CCMC) | Clima espacial de los últimos 30 días: decide si aparece la tormenta solar y qué tan fuerte pega |
+| JPL Small-Body Mission Design | Ventana de lanzamiento real a Bennu y su dificultad energética (v∞) |
+| NASA NeoWs + Mission Design | Un destino extra: el asteroide cercano más grande de la semana |
+
+Cómo llegan los datos al navegador (el navegador nunca llama a NASA directo: JPL no permite CORS y la DEMO_KEY tiene un límite de 10 llamadas por hora):
+1. **En Vercel:** la función `api/live-data.py` consulta las APIs y Vercel cachea la respuesta 6 h. Opcional: cargar una clave gratuita de api.nasa.gov como variable de entorno `NASA_API_KEY` (si falta, usa `DEMO_KEY`).
+2. **Respaldo:** `assets/live-data.js`, una copia guardada. Para actualizarla:
+   ```
+   python tools/fetch_data.py
+   ```
+3. Si no hay ninguna de las dos, el juego usa valores de referencia. Arriba de la pantalla siempre dice de dónde salen los datos.
+
+La lógica de consulta está en `api/_live.py` (solo biblioteca estándar de Python).
 
 ## Documento del proyecto
 Fuente editable: `docs/documento_proyecto.md`. Para regenerar el PDF:
@@ -29,7 +43,7 @@ git branch -M main
 git remote add origin https://github.com/TU_USUARIO/TU_REPO.git
 git push -u origin main
 ```
-Para publicarlo: Settings > Pages > rama `main`, carpeta raíz. La acción `.github/workflows/update-data.yml` actualiza los datos todos los días (revisá que el repositorio permita escritura a las acciones).
+Para publicarlo: Settings > Pages > rama `main`, carpeta raíz. GitHub Pages no ejecuta la función de `api/`, así que ahí el juego usa la copia guardada (`assets/live-data.js`).
 
 ## Licencia
 MIT (ver `LICENSE`); completá el nombre del equipo.
@@ -55,7 +69,7 @@ El proyecto es estático (HTML, CSS y JavaScript), por lo que puede alojarse gra
 
 1. Descomprimí el ZIP.
 2. Abrí https://app.netlify.com/drop desde una computadora e iniciá sesión o creá una cuenta gratuita.
-3. Arrastrá la carpeta `repo` descomprimida (debe contener `index.html` y las carpetas `assets` y `data`).
+3. Arrastrá la carpeta `repo` descomprimida (debe contener `index.html` y la carpeta `assets`; Netlify Drop no ejecuta `api/`, así que usa la copia guardada de los datos).
 4. Netlify publicará el sitio y mostrará una dirección `https://...netlify.app` para compartir.
 
 Alternativa: GitHub Pages, siguiendo la sección anterior. No se incluye un enlace público ya publicado porque requiere que el propietario del juego autorice la publicación en una cuenta de hosting.
